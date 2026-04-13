@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CRM Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-6">
+
+  <h1 class="text-3xl font-bold mb-6">Booking CRM Dashboard</h1>
+
+  <!-- Stats -->
+  <div class="grid grid-cols-3 gap-4 mb-6">
+    <div class="bg-white p-4 rounded shadow">
+      <h2 class="text-sm text-gray-500">Total Bookings</h2>
+      <p id="totalBookings" class="text-2xl font-bold">0</p>
+    </div>
+    <div class="bg-white p-4 rounded shadow">
+      <h2 class="text-sm text-gray-500">Pending</h2>
+      <p id="pendingBookings" class="text-2xl font-bold">0</p>
+    </div>
+    <div class="bg-white p-4 rounded shadow">
+      <h2 class="text-sm text-gray-500">Revenue (Demo)</h2>
+      <p id="revenue" class="text-2xl font-bold">R0</p>
+    </div>
+  </div>
+
+  <!-- Add Booking (Demo) -->
+  <div class="bg-white p-4 rounded shadow mb-6">
+    <h2 class="font-bold mb-2">Add Booking (Demo)</h2>
+    <input id="name" placeholder="Client Name" class="border p-2 mr-2">
+    <input id="property" placeholder="Property" class="border p-2 mr-2">
+    <input id="dates" placeholder="Dates" class="border p-2 mr-2">
+    <button onclick="addBooking()" class="bg-blue-500 text-white px-4 py-2 rounded">Add</button>
+  </div>
+
+  <!-- Bookings Table -->
+  <div class="bg-white p-4 rounded shadow">
+    <h2 class="font-bold mb-4">Bookings</h2>
+    <table class="w-full">
+      <thead>
+        <tr class="text-left border-b">
+          <th>Name</th>
+          <th>Property</th>
+          <th>Dates</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="bookingTable"></tbody>
+    </table>
+  </div>
+
+<script>
+let bookings = JSON.parse(localStorage.getItem("bookings")) || [];
+
+function save() {
+  localStorage.setItem("bookings", JSON.stringify(bookings));
+  render();
+}
+
+function addBooking() {
+  const name = document.getElementById("name").value;
+  const property = document.getElementById("property").value;
+  const dates = document.getElementById("dates").value;
+
+  bookings.push({
+    id: Date.now(),
+    name,
+    property,
+    dates,
+    status: "Pending",
+    depositPaid: false,
+    fullyPaid: false,
+    amount: 10000 // fake price
+  });
+
+  save();
+}
+
+function updateStatus(id, status) {
+  bookings = bookings.map(b => b.id === id ? {...b, status} : b);
+  save();
+}
+
+function payDeposit(id) {
+  bookings = bookings.map(b => {
+    if (b.id === id) {
+      b.depositPaid = true;
+      b.status = "Deposit Paid";
+    }
+    return b;
+  });
+  save();
+}
+
+function payFull(id) {
+  bookings = bookings.map(b => {
+    if (b.id === id) {
+      b.fullyPaid = true;
+      b.status = "Fully Paid";
+    }
+    return b;
+  });
+  save();
+}
+
+function cancelBooking(id) {
+  bookings = bookings.map(b => b.id === id ? {...b, status: "Cancelled"} : b);
+  save();
+}
+
+function render() {
+  const table = document.getElementById("bookingTable");
+  table.innerHTML = "";
+
+  let total = bookings.length;
+  let pending = bookings.filter(b => b.status === "Pending").length;
+  let revenue = bookings
+    .filter(b => b.fullyPaid)
+    .reduce((sum, b) => sum + b.amount, 0);
+
+  document.getElementById("totalBookings").innerText = total;
+  document.getElementById("pendingBookings").innerText = pending;
+  document.getElementById("revenue").innerText = "R" + revenue;
+
+  bookings.forEach(b => {
+    table.innerHTML += `
+      <tr class="border-b">
+        <td>${b.name}</td>
+        <td>${b.property}</td>
+        <td>${b.dates}</td>
+        <td>${b.status}</td>
+        <td>
+          <button onclick="updateStatus(${b.id}, 'Confirmed')" class="text-green-600">Approve</button>
+          <button onclick="cancelBooking(${b.id})" class="text-red-600 ml-2">Cancel</button>
+          <button onclick="payDeposit(${b.id})" class="text-blue-600 ml-2">Deposit</button>
+          <button onclick="payFull(${b.id})" class="text-purple-600 ml-2">Full</button>
+        </td>
+      </tr>
+    `;
+  });
+}
+
+render();
+</script>
+
+</body>
+</html>
