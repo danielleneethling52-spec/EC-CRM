@@ -1,186 +1,135 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Advanced CRM Dashboard</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SaaS CRM Final</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-gray-100 p-6">
 
-<h1 class="text-3xl font-bold mb-6">Advanced Booking CRM</h1>
+<h1 class="text-3xl font-bold mb-6">SaaS Booking CRM (Final)</h1>
 
 <!-- Stats -->
 <div class="grid grid-cols-4 gap-4 mb-6">
-  <div class="bg-white p-4 rounded shadow">
-    <p>Total Bookings</p>
-    <h2 id="totalBookings" class="text-2xl font-bold">0</h2>
-  </div>
-  <div class="bg-white p-4 rounded shadow">
-    <p>Pending</p>
-    <h2 id="pendingBookings" class="text-2xl font-bold">0</h2>
-  </div>
-  <div class="bg-white p-4 rounded shadow">
-    <p>Revenue</p>
-    <h2 id="revenue" class="text-2xl font-bold">R0</h2>
-  </div>
-  <div class="bg-white p-4 rounded shadow">
-    <p>Balance Due</p>
-    <h2 id="balanceDue" class="text-2xl font-bold">0</h2>
-  </div>
+<div class="bg-white p-4 rounded shadow"><p>Total</p><h2 id="total"></h2></div>
+<div class="bg-white p-4 rounded shadow"><p>Pending</p><h2 id="pending"></h2></div>
+<div class="bg-white p-4 rounded shadow"><p>Revenue</p><h2 id="revenue"></h2></div>
+<div class="bg-white p-4 rounded shadow"><p>Balance Due</p><h2 id="balance"></h2></div>
 </div>
 
-<!-- Add Booking -->
-<div class="bg-white p-4 rounded shadow mb-6">
-  <h2 class="font-bold mb-2">Add Booking</h2>
-  <input id="name" placeholder="Client Name" class="border p-2 mr-2">
-  <input id="email" placeholder="Email" class="border p-2 mr-2">
-  <input id="property" placeholder="Property" class="border p-2 mr-2">
-  <input id="dates" placeholder="Start Date (YYYY-MM-DD)" class="border p-2 mr-2">
-  <button onclick="addBooking()" class="bg-blue-500 text-white px-4 py-2 rounded">Add</button>
+<!-- Chart -->
+<canvas id="chart" class="bg-white p-4 rounded shadow mb-6"></canvas>
+
+<!-- Add -->
+<div class="bg-white p-4 mb-6 rounded shadow">
+<input id="name" placeholder="Name" class="border p-2 mr-2">
+<input id="email" placeholder="Email" class="border p-2 mr-2">
+<input id="property" placeholder="Property" class="border p-2 mr-2">
+<input id="date" type="date" class="border p-2 mr-2">
+<button onclick="addBooking()" class="bg-black text-white px-4 py-2">Add</button>
 </div>
 
-<!-- Bookings Table -->
-<div class="bg-white p-4 rounded shadow mb-6">
-  <h2 class="font-bold mb-4">Bookings</h2>
-  <table class="w-full text-sm">
-    <thead>
-      <tr class="border-b">
-        <th>Name</th><th>Property</th><th>Status</th><th>Actions</th>
-      </tr>
-    </thead>
-    <tbody id="bookingTable"></tbody>
-  </table>
+<!-- Table -->
+<div class="bg-white p-4 rounded shadow">
+<table class="w-full text-sm">
+<thead><tr><th>Name</th><th>Status</th><th>Actions</th></tr></thead>
+<tbody id="table"></tbody>
+</table>
 </div>
 
-<!-- Detail Panel -->
-<div id="detailPanel" class="bg-white p-4 rounded shadow hidden">
-  <h2 class="font-bold mb-2">Booking Details</h2>
-  <div id="details"></div>
-
-  <textarea id="noteInput" placeholder="Add note" class="border p-2 w-full mt-2"></textarea>
-  <button onclick="saveNote()" class="bg-gray-800 text-white px-3 py-1 mt-2">Save Note</button>
-
-  <div class="mt-4">
-    <button onclick="sendEmail()" class="bg-blue-500 text-white px-3 py-1">Send Email</button>
-    <button onclick="sendInvoice()" class="bg-green-500 text-white px-3 py-1 ml-2">Send Invoice</button>
-  </div>
-
-  <div class="mt-4">
-    <h3 class="font-bold">Chat</h3>
-    <div id="chatBox" class="border h-24 overflow-y-scroll p-2 mb-2"></div>
-    <input id="chatInput" class="border p-1 w-full" placeholder="Type message">
-    <button onclick="sendChat()" class="bg-black text-white px-2 py-1 mt-1">Send</button>
-  </div>
+<!-- Modal -->
+<div id="modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+<div class="bg-white p-6 w-96 rounded">
+<div id="modalContent"></div>
+<button onclick="closeModal()" class="mt-4 bg-gray-800 text-white px-3 py-1">Close</button>
+</div>
 </div>
 
 <script>
 let bookings = JSON.parse(localStorage.getItem("bookings")) || [];
-let currentId = null;
+let current;
+let chart;
 
-function save() {
-  localStorage.setItem("bookings", JSON.stringify(bookings));
-  render();
+function save(){localStorage.setItem("bookings",JSON.stringify(bookings));render();}
+
+function addBooking(){
+bookings.push({
+id:Date.now(),name:name.value,email:email.value,property:property.value,date:date.value,status:"Pending",deposit:false,full:false,amount:10000,notes:""});
+save();}
+
+function render(){
+table.innerHTML="";
+bookings.forEach(b=>{
+let locked=b.full?"disabled opacity-50":"";
+table.innerHTML+=`<tr>
+<td>${b.name}</td>
+<td>${b.status}</td>
+<td>
+<button onclick="view(${b.id})">View</button>
+<button ${locked} onclick="approve(${b.id})">✔</button>
+<button ${locked} onclick="deposit(${b.id})">50%</button>
+<button ${locked} onclick="full(${b.id})">100%</button>
+</td>
+</tr>`;
+});
+
+let totalCount=bookings.length;
+let pendingCount=bookings.filter(b=>b.status=="Pending").length;
+let revenueCount=bookings.filter(b=>b.full).reduce((a,b)=>a+b.amount,0);
+let balanceCount=bookings.filter(b=>b.deposit&&!b.full).length;
+
+total.innerText=totalCount;
+pending.innerText=pendingCount;
+revenue.innerText="R"+revenueCount;
+balance.innerText=balanceCount;
+
+renderChart(totalCount,pendingCount,revenueCount);
 }
 
-function addBooking() {
-  bookings.push({
-    id: Date.now(),
-    name: name.value,
-    email: email.value,
-    property: property.value,
-    startDate: dates.value,
-    status: "Pending",
-    depositPaid: false,
-    fullyPaid: false,
-    notes: "",
-    chat: [],
-    amount: 10000
-  });
-  save();
+function renderChart(total,pending,revenue){
+if(chart) chart.destroy();
+chart=new Chart(document.getElementById('chart'),{
+type:'bar',
+data:{labels:['Total','Pending','Revenue'],datasets:[{data:[total,pending,revenue]}]}
+});
 }
 
-function render() {
-  let table = bookingTable;
-  table.innerHTML = "";
+function approve(id){update(id,{status:"Confirmed"});}
+function deposit(id){update(id,{deposit:true,status:"Deposit Paid"});}
+function full(id){update(id,{full:true,status:"Fully Paid"});}
 
-  let total = bookings.length;
-  let pending = bookings.filter(b => b.status === "Pending").length;
-  let revenue = bookings.filter(b => b.fullyPaid).reduce((a,b)=>a+b.amount,0);
-  let balanceDue = bookings.filter(b=>b.depositPaid && !b.fullyPaid).length;
+function update(id,fields){bookings=bookings.map(b=>b.id==id?{...b,...fields}:b);save();}
 
-  totalBookings.innerText = total;
-  pendingBookings.innerText = pending;
-  revenue.innerText = "R"+revenue;
-  balanceDue.innerText = balanceDue;
+function view(id){
+current=id;
+let b=bookings.find(x=>x.id==id);
+modal.classList.remove("hidden");
+modalContent.innerHTML=`
+<h2 class="font-bold">${b.name}</h2>
+<p>${b.email}</p>
+<p>Status: ${b.status}</p>
+<p>Amount: R${b.amount}</p>
 
-  bookings.forEach(b => {
-    table.innerHTML += `
-      <tr class="border-b">
-        <td>${b.name}</td>
-        <td>${b.property}</td>
-        <td>${b.status}</td>
-        <td>
-          <button onclick="view(${b.id})">View</button>
-          <button onclick="approve(${b.id})">Approve</button>
-          <button onclick="deposit(${b.id})">Deposit</button>
-          <button onclick="full(${b.id})">Full</button>
-        </td>
-      </tr>
-    `;
-  });
+<div class="mt-2 p-2 border">
+<h3 class="font-bold">Invoice</h3>
+<p>Deposit: R${b.amount*0.5}</p>
+<p>Balance: R${b.amount*0.5}</p>
+</div>
+
+<textarea id="note" class="border w-full mt-2">${b.notes}</textarea>
+<button onclick="saveNote()" class="bg-black text-white px-2 py-1 mt-1">Save Note</button>
+
+<div class="mt-2">
+<button onclick="alert('Invoice sent')" class="bg-green-500 text-white px-2 py-1">Send Invoice</button>
+<button onclick="alert('Email sent')" class="bg-blue-500 text-white px-2 py-1">Email</button>
+</div>
+`;
 }
 
-function view(id) {
-  currentId = id;
-  let b = bookings.find(x=>x.id===id);
-  detailPanel.classList.remove("hidden");
-  details.innerHTML = `Name: ${b.name}<br>Email: ${b.email}<br>Status: ${b.status}`;
-  noteInput.value = b.notes;
-
-  chatBox.innerHTML = b.chat.map(c=>`<div>${c}</div>`).join("");
-}
-
-function approve(id){
-  bookings = bookings.map(b=>b.id===id?{...b,status:"Confirmed"}:b);
-  save();
-}
-
-function deposit(id){
-  bookings = bookings.map(b=>b.id===id?{...b,depositPaid:true,status:"Deposit Paid"}:b);
-  save();
-}
-
-function full(id){
-  bookings = bookings.map(b=>b.id===id?{...b,fullyPaid:true,status:"Fully Paid"}:b);
-  save();
-}
-
-function saveNote(){
-  bookings = bookings.map(b=>b.id===currentId?{...b,notes:noteInput.value}:b);
-  save();
-}
-
-function sendEmail(){
-  alert("Email sent successfully (demo)");
-}
-
-function sendInvoice(){
-  alert("Invoice sent (demo)");
-}
-
-function sendChat(){
-  let msg = chatInput.value;
-  bookings = bookings.map(b=>{
-    if(b.id===currentId){
-      b.chat.push(msg);
-    }
-    return b;
-  });
-  chatInput.value="";
-  save();
-  view(currentId);
-}
+function closeModal(){modal.classList.add("hidden");}
+function saveNote(){update(current,{notes:note.value});}
 
 render();
 </script>
