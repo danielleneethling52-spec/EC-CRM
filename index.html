@@ -27,23 +27,25 @@
   <div class="flex justify-between items-center mb-6">
     <div>
       <h1 class="text-3xl font-bold">Bookings Dashboard</h1>
-      <p class="text-gray-500">Real-time booking overview</p>
+      <p class="text-gray-500">Real-time booking lifecycle management</p>
     </div>
 
     <div class="flex gap-2">
       <input id="search" onkeyup="render()" placeholder="Search client or property..." class="border p-2 rounded w-64" />
       <select id="filter" onchange="render()" class="border p-2 rounded">
         <option value="all">All</option>
-        <option value="Pending">Pending</option>
-        <option value="Approved">Approved</option>
-        <option value="Rejected">Rejected</option>
+        <option value="Pending">Pending Approval</option>
+        <option value="Confirmed">Confirmed</option>
+        <option value="Deposit Paid">Deposit Paid</option>
+        <option value="Final Invoice Sent">Final Invoice Sent</option>
+        <option value="Fully Paid">Fully Paid</option>
       </select>
     </div>
   </div>
 
   <!-- KPI -->
   <div class="grid grid-cols-4 gap-4 mb-6">
-    <div class="bg-white p-4 rounded shadow"><p>Total</p><h2 id="kpiTotal" class="text-2xl font-bold"></h2></div>
+    <div class="bg-white p-4 rounded shadow"><p>Total Bookings</p><h2 id="kpiTotal" class="text-2xl font-bold"></h2></div>
     <div class="bg-white p-4 rounded shadow"><p>Pending</p><h2 id="kpiPending" class="text-2xl font-bold"></h2></div>
     <div class="bg-white p-4 rounded shadow"><p>Deposits</p><h2 id="kpiDeposit" class="text-2xl font-bold"></h2></div>
     <div class="bg-white p-4 rounded shadow"><p>Revenue</p><h2 id="kpiRevenue" class="text-2xl font-bold"></h2></div>
@@ -51,12 +53,13 @@
 
   <!-- TABLE -->
   <div class="bg-white rounded-xl shadow overflow-x-auto">
-    <table class="w-full min-w-[1100px]">
+    <table class="w-full min-w-[1200px]">
       <thead class="bg-gray-100 text-left">
         <tr>
           <th class="p-3">Client</th>
           <th class="p-3">Property</th>
-          <th class="p-3">Dates</th>
+          <th class="p-3">Check-in / Check-out</th>
+          <th class="p-3">Request Date</th>
           <th class="p-3">Status</th>
           <th class="p-3">Deposit</th>
           <th class="p-3">Final</th>
@@ -98,10 +101,43 @@ let bookings = JSON.parse(localStorage.getItem("bookings")) || [
     startDate: "2026-05-10",
     endDate: "2026-05-20",
     status: "Pending",
+    stage: "Pending",
     deposit: 0,
     final: 0,
     amount: 15000,
-    notes: "VIP guest"
+    notes: "Awaiting approval"
+  },
+  {
+    id: 2,
+    name: "James Smith",
+    email: "james@example.com",
+    contact: "082 444 9988",
+    property: "Mountain Retreat",
+    requestDate: "2026-03-20",
+    startDate: "2026-04-15",
+    endDate: "2026-04-25",
+    status: "Deposit Paid",
+    stage: "Deposit Paid",
+    deposit: 1,
+    final: 0,
+    amount: 22000,
+    notes: "Awaiting final invoice"
+  },
+  {
+    id: 3,
+    name: "Sophie Williams",
+    email: "sophie@example.com",
+    contact: "083 111 2233",
+    property: "Beach House Cape Town",
+    requestDate: "2026-02-10",
+    startDate: "2026-03-01",
+    endDate: "2026-03-10",
+    status: "Fully Paid",
+    stage: "Fully Paid",
+    deposit: 1,
+    final: 1,
+    amount: 18000,
+    notes: "Send check-in details"
   }
 ];
 
@@ -127,16 +163,16 @@ function render(){
 
   let filtered = bookings.filter(b => {
     return (b.name.toLowerCase().includes(search) || b.property.toLowerCase().includes(search)) &&
-           (filter === "all" || b.status === filter);
+           (filter === "all" || b.stage === filter);
   });
 
   table.innerHTML = "";
   clientsList.innerHTML = "";
 
-  kpiTotal.innerText = filtered.length;
-  kpiPending.innerText = filtered.filter(b => b.status === "Pending").length;
-  kpiDeposit.innerText = filtered.filter(b => b.deposit > 0).length;
-  kpiRevenue.innerText = "R " + filtered.reduce((a,b)=>a + (b.final ? b.amount : b.deposit ? b.amount/2 : 0),0);
+  kpiTotal.innerText = bookings.length;
+  kpiPending.innerText = bookings.filter(b => b.stage === "Pending").length;
+  kpiDeposit.innerText = bookings.filter(b => b.deposit > 0).length;
+  kpiRevenue.innerText = "R " + bookings.reduce((a,b)=>a + (b.final ? b.amount : b.deposit ? b.amount/2 : 0),0);
 
   filtered.forEach(b => {
 
@@ -145,7 +181,8 @@ function render(){
         <td class="p-3 font-semibold">${b.name}</td>
         <td class="p-3">${b.property}</td>
         <td class="p-3">${b.startDate} → ${b.endDate}</td>
-        <td class="p-3"><span class="px-2 py-1 rounded bg-yellow-100 text-xs">${b.status}</span></td>
+        <td class="p-3">${b.requestDate}</td>
+        <td class="p-3"><span class="px-2 py-1 rounded text-xs bg-gray-200">${b.stage}</span></td>
         <td class="p-3">${b.deposit ? "50% Paid" : "R0"}</td>
         <td class="p-3">${b.final ? "Paid" : "R0"}</td>
         <td class="p-3"><button onclick="openBooking(${b.id})" class="bg-blue-600 text-white px-3 py-1 rounded">View</button></td>
@@ -163,33 +200,47 @@ function render(){
 }
 
 function openBooking(id){
+
   current = id;
   let b = bookings.find(x => x.id === id);
 
   modal.classList.remove("hidden");
 
-  let action = b.final ?
-    `<button onclick="alert('Check-in email sent')" class="bg-purple-600 text-white px-3 py-1 rounded">Send Check-in Email</button>` :
-    `<button onclick="alert('Invoice sent')" class="bg-green-600 text-white px-3 py-1 rounded">Send Invoice</button>`;
+  let actions = "";
+
+  if(b.stage === "Pending"){
+    actions = `<button onclick="updateStage('Confirmed')" class="bg-green-600 text-white px-3 py-1 rounded">Approve + Send Confirmation & Deposit Invoice</button>`;
+  }
+
+  if(b.stage === "Confirmed"){
+    actions = `<button onclick="updateStage('Deposit Paid')" class="bg-yellow-500 text-white px-3 py-1 rounded">Mark Deposit Paid</button>`;
+  }
+
+  if(b.stage === "Deposit Paid"){
+    actions = `<button onclick="updateStage('Final Invoice Sent')" class="bg-blue-600 text-white px-3 py-1 rounded">Send Final Invoice</button>`;
+  }
+
+  if(b.stage === "Final Invoice Sent"){
+    actions = `<button onclick="updateStage('Fully Paid')" class="bg-purple-600 text-white px-3 py-1 rounded">Mark Fully Paid + Send Check-in Email</button>`;
+  }
 
   modalContent.innerHTML = `
-    <h2 class="text-2xl font-bold mb-3">Booking Overview</h2>
+    <h2 class="text-2xl font-bold mb-3">Booking Lifecycle</h2>
 
     <div class="grid grid-cols-2 gap-2 text-sm">
       <p><b>Client:</b> ${b.name}</p>
       <p><b>Email:</b> ${b.email}</p>
       <p><b>Contact:</b> ${b.contact}</p>
       <p><b>Property:</b> ${b.property}</p>
-      <p><b>Dates:</b> ${b.startDate} → ${b.endDate}</p>
-      <p><b>Request:</b> ${b.requestDate}</p>
+      <p><b>Request Date:</b> ${b.requestDate}</p>
+      <p><b>Check-in:</b> ${b.startDate}</p>
+      <p><b>Check-out:</b> ${b.endDate}</p>
       <p><b>Total:</b> R${b.amount}</p>
-      <p><b>Status:</b> ${b.status}</p>
+      <p><b>Stage:</b> ${b.stage}</p>
     </div>
 
-    <div class="mt-4 flex gap-2 flex-wrap">
-      <button onclick="updateStatus('Approved')" class="bg-green-600 text-white px-3 py-1 rounded">Approve</button>
-      <button onclick="updateStatus('Rejected')" class="bg-red-600 text-white px-3 py-1 rounded">Reject</button>
-      ${action}
+    <div class="mt-4 flex flex-wrap gap-2">
+      ${actions}
     </div>
 
     <textarea id="note" class="w-full border p-2 mt-4 rounded">${b.notes}</textarea>
@@ -197,8 +248,8 @@ function openBooking(id){
   `;
 }
 
-function updateStatus(s){
-  bookings = bookings.map(b => b.id === current ? {...b, status:s} : b);
+function updateStage(stage){
+  bookings = bookings.map(b => b.id === current ? {...b, stage, status: stage, deposit: stage === 'Confirmed' ? 1 : b.deposit, final: stage === 'Fully Paid' ? 1 : b.final} : b);
   save();
   openBooking(current);
 }
