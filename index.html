@@ -3,229 +3,216 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Full SaaS CRM</title>
+<title>Investor Level Booking CRM</title>
 <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="flex h-screen bg-gray-100">
+<body class="flex h-screen bg-gray-100 text-sm">
 
-<!-- Sidebar -->
-<div class="w-64 bg-black text-white p-4">
-  <h2 class="text-xl font-bold mb-6">CRM</h2>
-  <ul>
-    <li class="mb-3 cursor-pointer" onclick="navigate('dashboard')">Dashboard</li>
-    <li class="mb-3 cursor-pointer" onclick="navigate('bookings')">Bookings</li>
-    <li class="mb-3 cursor-pointer" onclick="navigate('clients')">Clients</li>
-  </ul>
+<!-- SIDEBAR -->
+<div class="w-64 bg-black text-white p-5 flex flex-col">
+  <h2 class="text-xl font-bold mb-8">Booking CRM</h2>
+
+  <button class="text-left mb-3 hover:text-blue-400" onclick="navigate('dashboard')">📊 Dashboard</button>
+  <button class="text-left mb-3 hover:text-blue-400" onclick="navigate('clients')">👥 Clients</button>
+
+  <div class="mt-auto text-xs text-gray-400">Investor Demo UI</div>
 </div>
 
-<!-- Main -->
+<!-- MAIN -->
 <div class="flex-1 p-6 overflow-y-auto">
 
-<!-- Dashboard -->
+<!-- DASHBOARD -->
 <div id="dashboardPage">
-  <h1 class="text-2xl font-bold mb-4">Dashboard</h1>
-  <div class="grid grid-cols-3 gap-4">
-    <div class="bg-white p-4 rounded">Total: <span id="total"></span></div>
-    <div class="bg-white p-4 rounded">Pending: <span id="pending"></span></div>
-    <div class="bg-white p-4 rounded">Revenue: <span id="revenue"></span></div>
+
+  <div class="flex justify-between items-center mb-6">
+    <div>
+      <h1 class="text-3xl font-bold">Bookings Dashboard</h1>
+      <p class="text-gray-500">Real-time booking overview</p>
+    </div>
+
+    <div class="flex gap-2">
+      <input id="search" onkeyup="render()" placeholder="Search client or property..." class="border p-2 rounded w-64" />
+      <select id="filter" onchange="render()" class="border p-2 rounded">
+        <option value="all">All</option>
+        <option value="Pending">Pending</option>
+        <option value="Approved">Approved</option>
+        <option value="Rejected">Rejected</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- KPI -->
+  <div class="grid grid-cols-4 gap-4 mb-6">
+    <div class="bg-white p-4 rounded shadow"><p>Total</p><h2 id="kpiTotal" class="text-2xl font-bold"></h2></div>
+    <div class="bg-white p-4 rounded shadow"><p>Pending</p><h2 id="kpiPending" class="text-2xl font-bold"></h2></div>
+    <div class="bg-white p-4 rounded shadow"><p>Deposits</p><h2 id="kpiDeposit" class="text-2xl font-bold"></h2></div>
+    <div class="bg-white p-4 rounded shadow"><p>Revenue</p><h2 id="kpiRevenue" class="text-2xl font-bold"></h2></div>
+  </div>
+
+  <!-- TABLE -->
+  <div class="bg-white rounded-xl shadow overflow-x-auto">
+    <table class="w-full min-w-[1100px]">
+      <thead class="bg-gray-100 text-left">
+        <tr>
+          <th class="p-3">Client</th>
+          <th class="p-3">Property</th>
+          <th class="p-3">Dates</th>
+          <th class="p-3">Status</th>
+          <th class="p-3">Deposit</th>
+          <th class="p-3">Final</th>
+          <th class="p-3">Action</th>
+        </tr>
+      </thead>
+      <tbody id="table"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- CLIENTS -->
+<div id="clientsPage" class="hidden">
+  <h1 class="text-2xl font-bold mb-4">Clients</h1>
+  <div id="clientsList" class="grid gap-3"></div>
+</div>
+
+</div>
+
+<!-- MODAL -->
+<div id="modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4">
+  <div class="bg-white w-full max-w-2xl rounded-xl p-6">
+    <div id="modalContent"></div>
+    <button onclick="closeModal()" class="mt-4 bg-black text-white px-4 py-2 rounded">Close</button>
   </div>
 </div>
 
-<!-- Bookings -->
-<div id="bookingsPage" class="hidden">
-  <h1 class="text-2xl font-bold mb-4">Bookings</h1>
-
-  <button onclick="simulateBooking()" class="bg-blue-600 text-white px-4 py-2 mb-4 rounded">+ Simulate Website Booking</button>
-
-  <table class="w-full bg-white">
-    <thead>
-      <tr><th>Name</th><th>Property</th><th>Status</th><th>Actions</th></tr>
-    </thead>
-    <tbody id="table"></tbody>
-  </table>
-</div>
-
-<!-- Clients -->
-<div id="clientsPage" class="hidden">
-  <h1 class="text-2xl font-bold mb-4">Clients</h1>
-  <div id="clientsList" class="space-y-2"></div>
-</div>
-
-</div>
-
-<!-- Booking Modal -->
-<div id="modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
-<div class="bg-white p-6 w-96 rounded">
-<div id="modalContent"></div>
-<button onclick="closeModal()" class="mt-4 bg-black text-white px-3 py-1">Close</button>
-</div>
-</div>
-
-<!-- Client Modal -->
-<div id="clientModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
-<div class="bg-white p-6 w-96 rounded">
-<div id="clientContent"></div>
-<button onclick="closeClientModal()" class="mt-4 bg-black text-white px-3 py-1">Close</button>
-</div>
-</div>
-
 <script>
+
 let bookings = JSON.parse(localStorage.getItem("bookings")) || [
   {
-    id:1,
-    name:"Emily Carter",
-    email:"emily@example.com",
-    contact:"081 555 3322",
-    property:"Ocean View Villa",
-    date:"2026-05-10",
-    status:"Pending",
-    deposit:false,
-    full:false,
-    amount:15000,
-    notes:"Requested early check-in",
-    chat:["Hi, I would like to book","Sure, awaiting confirmation"]
+    id: 1,
+    name: "Emily Carter",
+    email: "emily@example.com",
+    contact: "081 555 3322",
+    property: "Ocean View Villa",
+    requestDate: "2026-04-01",
+    startDate: "2026-05-10",
+    endDate: "2026-05-20",
+    status: "Pending",
+    deposit: 0,
+    final: 0,
+    amount: 15000,
+    notes: "VIP guest"
   }
 ];
 
 let current;
-let currentClient;
 
 function navigate(page){
   dashboardPage.classList.add("hidden");
-  bookingsPage.classList.add("hidden");
   clientsPage.classList.add("hidden");
-
-  if(page=="dashboard") dashboardPage.classList.remove("hidden");
-  if(page=="bookings") bookingsPage.classList.remove("hidden");
-  if(page=="clients") clientsPage.classList.remove("hidden");
+  if(page === "dashboard") dashboardPage.classList.remove("hidden");
+  if(page === "clients") clientsPage.classList.remove("hidden");
+  render();
 }
 
-function save(){localStorage.setItem("bookings",JSON.stringify(bookings));render();}
-
-function simulateBooking(){
-  bookings.push({
-    id:Date.now(),
-    name:"New Website Client",
-    email:"client@demo.com",
-    contact:"072 111 2222",
-    property:"Mountain Retreat",
-    date:"2026-05-15",
-    status:"Pending",
-    deposit:false,
-    full:false,
-    amount:10000,
-    notes:"Auto-generated booking",
-    chat:["Booking request submitted"]
-  });
-  save();
+function save(){
+  localStorage.setItem("bookings", JSON.stringify(bookings));
+  render();
 }
 
 function render(){
-  table.innerHTML="";
-  clientsList.innerHTML="";
 
-  bookings.forEach(b=>{
-    let locked=b.full?"disabled opacity-50":"";
+  let search = document.getElementById("search")?.value?.toLowerCase() || "";
+  let filter = document.getElementById("filter")?.value || "all";
 
-    table.innerHTML+=`<tr>
-      <td>${b.name}</td>
-      <td>${b.property}</td>
-      <td>${b.status}</td>
-      <td>
-        <button onclick="view(${b.id})">View</button>
-        <button ${locked} onclick="approve(${b.id})">✔</button>
-        <button ${locked} onclick="deposit(${b.id})">50%</button>
-        <button ${locked} onclick="full(${b.id})">100%</button>
-      </td>
-    </tr>`;
+  let filtered = bookings.filter(b => {
+    return (b.name.toLowerCase().includes(search) || b.property.toLowerCase().includes(search)) &&
+           (filter === "all" || b.status === filter);
+  });
 
-    clientsList.innerHTML+=`
-      <div onclick="viewClient(${b.id})" class="bg-white p-3 cursor-pointer hover:bg-gray-200 rounded">
-        <p class="font-bold">${b.name}</p>
-        <p class="text-sm text-gray-600">${b.email}</p>
+  table.innerHTML = "";
+  clientsList.innerHTML = "";
+
+  kpiTotal.innerText = filtered.length;
+  kpiPending.innerText = filtered.filter(b => b.status === "Pending").length;
+  kpiDeposit.innerText = filtered.filter(b => b.deposit > 0).length;
+  kpiRevenue.innerText = "R " + filtered.reduce((a,b)=>a + (b.final ? b.amount : b.deposit ? b.amount/2 : 0),0);
+
+  filtered.forEach(b => {
+
+    table.innerHTML += `
+      <tr class="hover:bg-gray-50 border-b">
+        <td class="p-3 font-semibold">${b.name}</td>
+        <td class="p-3">${b.property}</td>
+        <td class="p-3">${b.startDate} → ${b.endDate}</td>
+        <td class="p-3"><span class="px-2 py-1 rounded bg-yellow-100 text-xs">${b.status}</span></td>
+        <td class="p-3">${b.deposit ? "50% Paid" : "R0"}</td>
+        <td class="p-3">${b.final ? "Paid" : "R0"}</td>
+        <td class="p-3"><button onclick="openBooking(${b.id})" class="bg-blue-600 text-white px-3 py-1 rounded">View</button></td>
+      </tr>
+    `;
+
+    clientsList.innerHTML += `
+      <div onclick="openBooking(${b.id})" class="bg-white p-4 rounded shadow hover:shadow-lg cursor-pointer">
+        <div class="font-bold">${b.name}</div>
+        <div class="text-gray-500">${b.email}</div>
       </div>
     `;
-  });
 
-  total.innerText=bookings.length;
-  pending.innerText=bookings.filter(b=>b.status=="Pending").length;
-  revenue.innerText="R"+bookings.filter(b=>b.full).reduce((a,b)=>a+b.amount,0);
+  });
 }
 
-function approve(id){update(id,{status:"Confirmed"});}
-function deposit(id){update(id,{deposit:true,status:"Deposit Paid"});}
-function full(id){update(id,{full:true,status:"Fully Paid"});}
+function openBooking(id){
+  current = id;
+  let b = bookings.find(x => x.id === id);
 
-function update(id,fields){bookings=bookings.map(b=>b.id==id?{...b,...fields}:b);save();}
-
-function view(id){
-  current=id;
-  let b=bookings.find(x=>x.id==id);
   modal.classList.remove("hidden");
 
-  let actionButton = b.full
-    ? `<button onclick="alert('Check-in email sent')" class="bg-purple-600 text-white px-2 py-1 mt-2">Send Check-in Email</button>`
-    : `<button onclick="alert('Invoice sent')" class="bg-green-500 text-white px-2 py-1 mt-2">Send Invoice</button>`;
+  let action = b.final ?
+    `<button onclick="alert('Check-in email sent')" class="bg-purple-600 text-white px-3 py-1 rounded">Send Check-in Email</button>` :
+    `<button onclick="alert('Invoice sent')" class="bg-green-600 text-white px-3 py-1 rounded">Send Invoice</button>`;
 
-  modalContent.innerHTML=`
-    <h2 class="font-bold text-lg">${b.name}</h2>
-    <p>${b.email}</p>
-    <p>${b.contact}</p>
-    <p>Status: ${b.status}</p>
+  modalContent.innerHTML = `
+    <h2 class="text-2xl font-bold mb-3">Booking Overview</h2>
 
-    <div class="border p-2 mt-2">
-      <h3 class="font-bold">Invoice</h3>
-      <p>Deposit: R${b.amount*0.5}</p>
-      <p>Balance: R${b.amount*0.5}</p>
-      ${actionButton}
+    <div class="grid grid-cols-2 gap-2 text-sm">
+      <p><b>Client:</b> ${b.name}</p>
+      <p><b>Email:</b> ${b.email}</p>
+      <p><b>Contact:</b> ${b.contact}</p>
+      <p><b>Property:</b> ${b.property}</p>
+      <p><b>Dates:</b> ${b.startDate} → ${b.endDate}</p>
+      <p><b>Request:</b> ${b.requestDate}</p>
+      <p><b>Total:</b> R${b.amount}</p>
+      <p><b>Status:</b> ${b.status}</p>
     </div>
 
-    <textarea id="note" class="border w-full mt-2">${b.notes}</textarea>
-    <button onclick="saveNote()" class="bg-black text-white px-2 py-1 mt-1">Save Note</button>
-
-    <div class="mt-2">
-      <h3 class="font-bold">Chat</h3>
-      <div id="chatBox" class="border h-24 overflow-y-auto mb-1"></div>
-      <input id="chatInput" class="border w-full" placeholder="Message">
-      <button onclick="sendChat()" class="bg-blue-500 text-white px-2 py-1 mt-1">Send</button>
+    <div class="mt-4 flex gap-2 flex-wrap">
+      <button onclick="updateStatus('Approved')" class="bg-green-600 text-white px-3 py-1 rounded">Approve</button>
+      <button onclick="updateStatus('Rejected')" class="bg-red-600 text-white px-3 py-1 rounded">Reject</button>
+      ${action}
     </div>
-  `;
 
-  chatBox.innerHTML=b.chat.map(m=>`<div>${m}</div>`).join("");
-}
-
-function viewClient(id){
-  currentClient=id;
-  let b=bookings.find(x=>x.id==id);
-  clientModal.classList.remove("hidden");
-
-  clientContent.innerHTML=`
-    <h2 class="font-bold text-lg">Client Profile</h2>
-    <p><b>Name:</b> ${b.name}</p>
-    <p><b>Email:</b> ${b.email}</p>
-    <p><b>Contact:</b> ${b.contact}</p>
-    <p><b>Property:</b> ${b.property}</p>
-    <p><b>Status:</b> ${b.status}</p>
-    <p><b>Total Paid:</b> R${b.full ? b.amount : (b.deposit ? b.amount*0.5 : 0)}</p>
+    <textarea id="note" class="w-full border p-2 mt-4 rounded">${b.notes}</textarea>
+    <button onclick="saveNote()" class="mt-2 bg-black text-white px-4 py-2 rounded">Save Note</button>
   `;
 }
 
-function closeModal(){modal.classList.add("hidden");}
-function closeClientModal(){clientModal.classList.add("hidden");}
-function saveNote(){update(current,{notes:note.value});}
-
-function sendChat(){
-  let msg=chatInput.value;
-  bookings=bookings.map(b=>{
-    if(b.id==current){b.chat.push(msg);}return b;
-  });
-  chatInput.value="";
+function updateStatus(s){
+  bookings = bookings.map(b => b.id === current ? {...b, status:s} : b);
   save();
-  view(current);
+  openBooking(current);
 }
+
+function saveNote(){
+  let b = bookings.find(x => x.id === current);
+  b.notes = document.getElementById("note").value;
+  save();
+}
+
+function closeModal(){ modal.classList.add("hidden"); }
 
 render();
-</script>
 
+</script>
 </body>
 </html>
