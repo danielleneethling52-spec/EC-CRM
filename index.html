@@ -66,7 +66,47 @@
 </div>
 
 <script>
-let bookings = JSON.parse(localStorage.getItem("bookings")) || [];
+let bookings = JSON.parse(localStorage.getItem("bookings")) || [
+  {
+    id:1,
+    name:"John Smith",
+    email:"john@example.com",
+    property:"Ocean View Villa",
+    date:"2026-05-01",
+    status:"Pending",
+    deposit:false,
+    full:false,
+    amount:12000,
+    notes:"Client requested sea-facing room",
+    chat:["Hi, is this available?","Yes, awaiting confirmation."]
+  },
+  {
+    id:2,
+    name:"Sarah Williams",
+    email:"sarah@example.com",
+    property:"Mountain Retreat",
+    date:"2026-04-25",
+    status:"Deposit Paid",
+    deposit:true,
+    full:false,
+    amount:8000,
+    notes:"VIP client",
+    chat:["Deposit paid","Please send balance invoice later"]
+  },
+  {
+    id:3,
+    name:"Michael Brown",
+    email:"michael@example.com",
+    property:"City Apartment",
+    date:"2026-04-20",
+    status:"Fully Paid",
+    deposit:true,
+    full:true,
+    amount:6000,
+    notes:"Fully confirmed",
+    chat:["All paid","Looking forward to stay"]
+  }
+];
 let current;
 
 function navigate(page){
@@ -89,6 +129,16 @@ function addBooking(){
 }
 
 function render(){
+  // Auto logic: balance due within 14 days
+  let now = new Date();
+  bookings = bookings.map(b=>{
+    let start = new Date(b.date);
+    let diff = (start - now)/(1000*60*60*24);
+    if(diff <= 14 && b.deposit && !b.full){
+      b.status = "Balance Due";
+    }
+    return b;
+  });
   table.innerHTML="";
   clientsList.innerHTML="";
 
@@ -167,4 +217,3 @@ render();
 
 </body>
 </html>
-
