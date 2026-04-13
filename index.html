@@ -3,57 +3,80 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CRM Dashboard</title>
+  <title>Advanced CRM Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 p-6">
 
-  <h1 class="text-3xl font-bold mb-6">Booking CRM Dashboard</h1>
+<h1 class="text-3xl font-bold mb-6">Advanced Booking CRM</h1>
 
-  <!-- Stats -->
-  <div class="grid grid-cols-3 gap-4 mb-6">
-    <div class="bg-white p-4 rounded shadow">
-      <h2 class="text-sm text-gray-500">Total Bookings</h2>
-      <p id="totalBookings" class="text-2xl font-bold">0</p>
-    </div>
-    <div class="bg-white p-4 rounded shadow">
-      <h2 class="text-sm text-gray-500">Pending</h2>
-      <p id="pendingBookings" class="text-2xl font-bold">0</p>
-    </div>
-    <div class="bg-white p-4 rounded shadow">
-      <h2 class="text-sm text-gray-500">Revenue (Demo)</h2>
-      <p id="revenue" class="text-2xl font-bold">R0</p>
-    </div>
-  </div>
-
-  <!-- Add Booking (Demo) -->
-  <div class="bg-white p-4 rounded shadow mb-6">
-    <h2 class="font-bold mb-2">Add Booking (Demo)</h2>
-    <input id="name" placeholder="Client Name" class="border p-2 mr-2">
-    <input id="property" placeholder="Property" class="border p-2 mr-2">
-    <input id="dates" placeholder="Dates" class="border p-2 mr-2">
-    <button onclick="addBooking()" class="bg-blue-500 text-white px-4 py-2 rounded">Add</button>
-  </div>
-
-  <!-- Bookings Table -->
+<!-- Stats -->
+<div class="grid grid-cols-4 gap-4 mb-6">
   <div class="bg-white p-4 rounded shadow">
-    <h2 class="font-bold mb-4">Bookings</h2>
-    <table class="w-full">
-      <thead>
-        <tr class="text-left border-b">
-          <th>Name</th>
-          <th>Property</th>
-          <th>Dates</th>
-          <th>Status</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="bookingTable"></tbody>
-    </table>
+    <p>Total Bookings</p>
+    <h2 id="totalBookings" class="text-2xl font-bold">0</h2>
   </div>
+  <div class="bg-white p-4 rounded shadow">
+    <p>Pending</p>
+    <h2 id="pendingBookings" class="text-2xl font-bold">0</h2>
+  </div>
+  <div class="bg-white p-4 rounded shadow">
+    <p>Revenue</p>
+    <h2 id="revenue" class="text-2xl font-bold">R0</h2>
+  </div>
+  <div class="bg-white p-4 rounded shadow">
+    <p>Balance Due</p>
+    <h2 id="balanceDue" class="text-2xl font-bold">0</h2>
+  </div>
+</div>
+
+<!-- Add Booking -->
+<div class="bg-white p-4 rounded shadow mb-6">
+  <h2 class="font-bold mb-2">Add Booking</h2>
+  <input id="name" placeholder="Client Name" class="border p-2 mr-2">
+  <input id="email" placeholder="Email" class="border p-2 mr-2">
+  <input id="property" placeholder="Property" class="border p-2 mr-2">
+  <input id="dates" placeholder="Start Date (YYYY-MM-DD)" class="border p-2 mr-2">
+  <button onclick="addBooking()" class="bg-blue-500 text-white px-4 py-2 rounded">Add</button>
+</div>
+
+<!-- Bookings Table -->
+<div class="bg-white p-4 rounded shadow mb-6">
+  <h2 class="font-bold mb-4">Bookings</h2>
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="border-b">
+        <th>Name</th><th>Property</th><th>Status</th><th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="bookingTable"></tbody>
+  </table>
+</div>
+
+<!-- Detail Panel -->
+<div id="detailPanel" class="bg-white p-4 rounded shadow hidden">
+  <h2 class="font-bold mb-2">Booking Details</h2>
+  <div id="details"></div>
+
+  <textarea id="noteInput" placeholder="Add note" class="border p-2 w-full mt-2"></textarea>
+  <button onclick="saveNote()" class="bg-gray-800 text-white px-3 py-1 mt-2">Save Note</button>
+
+  <div class="mt-4">
+    <button onclick="sendEmail()" class="bg-blue-500 text-white px-3 py-1">Send Email</button>
+    <button onclick="sendInvoice()" class="bg-green-500 text-white px-3 py-1 ml-2">Send Invoice</button>
+  </div>
+
+  <div class="mt-4">
+    <h3 class="font-bold">Chat</h3>
+    <div id="chatBox" class="border h-24 overflow-y-scroll p-2 mb-2"></div>
+    <input id="chatInput" class="border p-1 w-full" placeholder="Type message">
+    <button onclick="sendChat()" class="bg-black text-white px-2 py-1 mt-1">Send</button>
+  </div>
+</div>
 
 <script>
 let bookings = JSON.parse(localStorage.getItem("bookings")) || [];
+let currentId = null;
 
 function save() {
   localStorage.setItem("bookings", JSON.stringify(bookings));
@@ -61,86 +84,102 @@ function save() {
 }
 
 function addBooking() {
-  const name = document.getElementById("name").value;
-  const property = document.getElementById("property").value;
-  const dates = document.getElementById("dates").value;
-
   bookings.push({
     id: Date.now(),
-    name,
-    property,
-    dates,
+    name: name.value,
+    email: email.value,
+    property: property.value,
+    startDate: dates.value,
     status: "Pending",
     depositPaid: false,
     fullyPaid: false,
-    amount: 10000 // fake price
+    notes: "",
+    chat: [],
+    amount: 10000
   });
-
-  save();
-}
-
-function updateStatus(id, status) {
-  bookings = bookings.map(b => b.id === id ? {...b, status} : b);
-  save();
-}
-
-function payDeposit(id) {
-  bookings = bookings.map(b => {
-    if (b.id === id) {
-      b.depositPaid = true;
-      b.status = "Deposit Paid";
-    }
-    return b;
-  });
-  save();
-}
-
-function payFull(id) {
-  bookings = bookings.map(b => {
-    if (b.id === id) {
-      b.fullyPaid = true;
-      b.status = "Fully Paid";
-    }
-    return b;
-  });
-  save();
-}
-
-function cancelBooking(id) {
-  bookings = bookings.map(b => b.id === id ? {...b, status: "Cancelled"} : b);
   save();
 }
 
 function render() {
-  const table = document.getElementById("bookingTable");
+  let table = bookingTable;
   table.innerHTML = "";
 
   let total = bookings.length;
   let pending = bookings.filter(b => b.status === "Pending").length;
-  let revenue = bookings
-    .filter(b => b.fullyPaid)
-    .reduce((sum, b) => sum + b.amount, 0);
+  let revenue = bookings.filter(b => b.fullyPaid).reduce((a,b)=>a+b.amount,0);
+  let balanceDue = bookings.filter(b=>b.depositPaid && !b.fullyPaid).length;
 
-  document.getElementById("totalBookings").innerText = total;
-  document.getElementById("pendingBookings").innerText = pending;
-  document.getElementById("revenue").innerText = "R" + revenue;
+  totalBookings.innerText = total;
+  pendingBookings.innerText = pending;
+  revenue.innerText = "R"+revenue;
+  balanceDue.innerText = balanceDue;
 
   bookings.forEach(b => {
     table.innerHTML += `
       <tr class="border-b">
         <td>${b.name}</td>
         <td>${b.property}</td>
-        <td>${b.dates}</td>
         <td>${b.status}</td>
         <td>
-          <button onclick="updateStatus(${b.id}, 'Confirmed')" class="text-green-600">Approve</button>
-          <button onclick="cancelBooking(${b.id})" class="text-red-600 ml-2">Cancel</button>
-          <button onclick="payDeposit(${b.id})" class="text-blue-600 ml-2">Deposit</button>
-          <button onclick="payFull(${b.id})" class="text-purple-600 ml-2">Full</button>
+          <button onclick="view(${b.id})">View</button>
+          <button onclick="approve(${b.id})">Approve</button>
+          <button onclick="deposit(${b.id})">Deposit</button>
+          <button onclick="full(${b.id})">Full</button>
         </td>
       </tr>
     `;
   });
+}
+
+function view(id) {
+  currentId = id;
+  let b = bookings.find(x=>x.id===id);
+  detailPanel.classList.remove("hidden");
+  details.innerHTML = `Name: ${b.name}<br>Email: ${b.email}<br>Status: ${b.status}`;
+  noteInput.value = b.notes;
+
+  chatBox.innerHTML = b.chat.map(c=>`<div>${c}</div>`).join("");
+}
+
+function approve(id){
+  bookings = bookings.map(b=>b.id===id?{...b,status:"Confirmed"}:b);
+  save();
+}
+
+function deposit(id){
+  bookings = bookings.map(b=>b.id===id?{...b,depositPaid:true,status:"Deposit Paid"}:b);
+  save();
+}
+
+function full(id){
+  bookings = bookings.map(b=>b.id===id?{...b,fullyPaid:true,status:"Fully Paid"}:b);
+  save();
+}
+
+function saveNote(){
+  bookings = bookings.map(b=>b.id===currentId?{...b,notes:noteInput.value}:b);
+  save();
+}
+
+function sendEmail(){
+  alert("Email sent successfully (demo)");
+}
+
+function sendInvoice(){
+  alert("Invoice sent (demo)");
+}
+
+function sendChat(){
+  let msg = chatInput.value;
+  bookings = bookings.map(b=>{
+    if(b.id===currentId){
+      b.chat.push(msg);
+    }
+    return b;
+  });
+  chatInput.value="";
+  save();
+  view(currentId);
 }
 
 render();
