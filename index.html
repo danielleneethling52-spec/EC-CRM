@@ -35,16 +35,12 @@
 <div id="bookingsPage" class="hidden">
   <h1 class="text-2xl font-bold mb-4">Bookings</h1>
 
-  <div class="mb-4">
-    <input id="name" placeholder="Name" class="border p-2 mr-2">
-    <input id="email" placeholder="Email" class="border p-2 mr-2">
-    <input id="property" placeholder="Property" class="border p-2 mr-2">
-    <input id="date" type="date" class="border p-2 mr-2">
-    <button onclick="addBooking()" class="bg-black text-white px-4 py-2">Add</button>
-  </div>
+  <button onclick="simulateBooking()" class="bg-blue-600 text-white px-4 py-2 mb-4 rounded">+ Simulate Website Booking</button>
 
   <table class="w-full bg-white">
-    <thead><tr><th>Name</th><th>Status</th><th>Actions</th></tr></thead>
+    <thead>
+      <tr><th>Name</th><th>Property</th><th>Status</th><th>Actions</th></tr>
+    </thead>
     <tbody id="table"></tbody>
   </table>
 </div>
@@ -52,12 +48,12 @@
 <!-- Clients -->
 <div id="clientsPage" class="hidden">
   <h1 class="text-2xl font-bold mb-4">Clients</h1>
-  <div id="clientsList"></div>
+  <div id="clientsList" class="space-y-2"></div>
 </div>
 
 </div>
 
-<!-- Modal -->
+<!-- Booking Modal -->
 <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
 <div class="bg-white p-6 w-96 rounded">
 <div id="modalContent"></div>
@@ -65,49 +61,34 @@
 </div>
 </div>
 
+<!-- Client Modal -->
+<div id="clientModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+<div class="bg-white p-6 w-96 rounded">
+<div id="clientContent"></div>
+<button onclick="closeClientModal()" class="mt-4 bg-black text-white px-3 py-1">Close</button>
+</div>
+</div>
+
 <script>
 let bookings = JSON.parse(localStorage.getItem("bookings")) || [
   {
     id:1,
-    name:"John Smith",
-    email:"john@example.com",
+    name:"Emily Carter",
+    email:"emily@example.com",
+    contact:"081 555 3322",
     property:"Ocean View Villa",
-    date:"2026-05-01",
+    date:"2026-05-10",
     status:"Pending",
     deposit:false,
     full:false,
-    amount:12000,
-    notes:"Client requested sea-facing room",
-    chat:["Hi, is this available?","Yes, awaiting confirmation."]
-  },
-  {
-    id:2,
-    name:"Sarah Williams",
-    email:"sarah@example.com",
-    property:"Mountain Retreat",
-    date:"2026-04-25",
-    status:"Deposit Paid",
-    deposit:true,
-    full:false,
-    amount:8000,
-    notes:"VIP client",
-    chat:["Deposit paid","Please send balance invoice later"]
-  },
-  {
-    id:3,
-    name:"Michael Brown",
-    email:"michael@example.com",
-    property:"City Apartment",
-    date:"2026-04-20",
-    status:"Fully Paid",
-    deposit:true,
-    full:true,
-    amount:6000,
-    notes:"Fully confirmed",
-    chat:["All paid","Looking forward to stay"]
+    amount:15000,
+    notes:"Requested early check-in",
+    chat:["Hi, I would like to book","Sure, awaiting confirmation"]
   }
 ];
+
 let current;
+let currentClient;
 
 function navigate(page){
   dashboardPage.classList.add("hidden");
@@ -121,40 +102,49 @@ function navigate(page){
 
 function save(){localStorage.setItem("bookings",JSON.stringify(bookings));render();}
 
-function addBooking(){
+function simulateBooking(){
   bookings.push({
-    id:Date.now(),name:name.value,email:email.value,property:property.value,date:date.value,status:"Pending",deposit:false,full:false,amount:10000,notes:"",chat:[]
+    id:Date.now(),
+    name:"New Website Client",
+    email:"client@demo.com",
+    contact:"072 111 2222",
+    property:"Mountain Retreat",
+    date:"2026-05-15",
+    status:"Pending",
+    deposit:false,
+    full:false,
+    amount:10000,
+    notes:"Auto-generated booking",
+    chat:["Booking request submitted"]
   });
   save();
 }
 
 function render(){
-  // Auto logic: balance due within 14 days
-  let now = new Date();
-  bookings = bookings.map(b=>{
-    let start = new Date(b.date);
-    let diff = (start - now)/(1000*60*60*24);
-    if(diff <= 14 && b.deposit && !b.full){
-      b.status = "Balance Due";
-    }
-    return b;
-  });
   table.innerHTML="";
   clientsList.innerHTML="";
 
   bookings.forEach(b=>{
+    let locked=b.full?"disabled opacity-50":"";
+
     table.innerHTML+=`<tr>
       <td>${b.name}</td>
+      <td>${b.property}</td>
       <td>${b.status}</td>
       <td>
         <button onclick="view(${b.id})">View</button>
-        <button onclick="approve(${b.id})">✔</button>
-        <button onclick="deposit(${b.id})">50%</button>
-        <button onclick="full(${b.id})">100%</button>
+        <button ${locked} onclick="approve(${b.id})">✔</button>
+        <button ${locked} onclick="deposit(${b.id})">50%</button>
+        <button ${locked} onclick="full(${b.id})">100%</button>
       </td>
     </tr>`;
 
-    clientsList.innerHTML+=`<div class="bg-white p-3 mb-2">${b.name} - ${b.email}</div>`;
+    clientsList.innerHTML+=`
+      <div onclick="viewClient(${b.id})" class="bg-white p-3 cursor-pointer hover:bg-gray-200 rounded">
+        <p class="font-bold">${b.name}</p>
+        <p class="text-sm text-gray-600">${b.email}</p>
+      </div>
+    `;
   });
 
   total.innerText=bookings.length;
@@ -173,16 +163,21 @@ function view(id){
   let b=bookings.find(x=>x.id==id);
   modal.classList.remove("hidden");
 
+  let actionButton = b.full
+    ? `<button onclick="alert('Check-in email sent')" class="bg-purple-600 text-white px-2 py-1 mt-2">Send Check-in Email</button>`
+    : `<button onclick="alert('Invoice sent')" class="bg-green-500 text-white px-2 py-1 mt-2">Send Invoice</button>`;
+
   modalContent.innerHTML=`
-    <h2 class="font-bold">${b.name}</h2>
+    <h2 class="font-bold text-lg">${b.name}</h2>
     <p>${b.email}</p>
+    <p>${b.contact}</p>
     <p>Status: ${b.status}</p>
 
     <div class="border p-2 mt-2">
       <h3 class="font-bold">Invoice</h3>
       <p>Deposit: R${b.amount*0.5}</p>
       <p>Balance: R${b.amount*0.5}</p>
-      <button onclick="alert('Invoice sent')" class="bg-green-500 text-white px-2 py-1 mt-1">Send Invoice</button>
+      ${actionButton}
     </div>
 
     <textarea id="note" class="border w-full mt-2">${b.notes}</textarea>
@@ -199,7 +194,24 @@ function view(id){
   chatBox.innerHTML=b.chat.map(m=>`<div>${m}</div>`).join("");
 }
 
+function viewClient(id){
+  currentClient=id;
+  let b=bookings.find(x=>x.id==id);
+  clientModal.classList.remove("hidden");
+
+  clientContent.innerHTML=`
+    <h2 class="font-bold text-lg">Client Profile</h2>
+    <p><b>Name:</b> ${b.name}</p>
+    <p><b>Email:</b> ${b.email}</p>
+    <p><b>Contact:</b> ${b.contact}</p>
+    <p><b>Property:</b> ${b.property}</p>
+    <p><b>Status:</b> ${b.status}</p>
+    <p><b>Total Paid:</b> R${b.full ? b.amount : (b.deposit ? b.amount*0.5 : 0)}</p>
+  `;
+}
+
 function closeModal(){modal.classList.add("hidden");}
+function closeClientModal(){clientModal.classList.add("hidden");}
 function saveNote(){update(current,{notes:note.value});}
 
 function sendChat(){
